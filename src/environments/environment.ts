@@ -5,5 +5,5 @@
  */
 export const environment = {
   production: true,
-  apiUrl: 'https://TODO-reemplazar-con-la-url-real-de-la-api',
+  apiUrl: '/api',
 };
