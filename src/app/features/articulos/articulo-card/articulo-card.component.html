@@ -1,0 +1,62 @@
+<div
+  class="group flex flex-col overflow-hidden rounded-xl border border-surface-200 bg-white transition-shadow hover:shadow-md dark:border-surface-800 dark:bg-surface-900"
+>
+  <div class="relative aspect-[4/3] w-full overflow-hidden bg-surface-100 dark:bg-surface-800">
+    @if (articulo.imagenUrlVisualizacion) {
+      <img [src]="articulo.imagenUrlVisualizacion" [alt]="articulo.nombre" class="h-full w-full object-cover" />
+    } @else {
+      <div class="flex h-full w-full items-center justify-center text-surface-300 dark:text-surface-600">
+        <i class="pi pi-image text-4xl"></i>
+      </div>
+    }
+
+    @if (categoria) {
+      <p-tag [value]="categoria.nombre" severity="secondary" styleClass="absolute left-2 top-2" />
+    }
+  </div>
+
+  <div class="flex flex-1 flex-col gap-2 p-4">
+    <h3 class="truncate font-semibold text-surface-900 dark:text-surface-0" [title]="articulo.nombre">
+      {{ articulo.nombre }}
+    </h3>
+    <p class="line-clamp-2 text-sm text-surface-500 dark:text-surface-400">
+      {{ articulo.descripcionComprador || 'Sin descripción para el comprador.' }}
+    </p>
+
+    <p class="flex items-center gap-1.5 text-xs text-surface-500 dark:text-surface-400">
+      <i class="pi pi-calculator text-surface-400"></i>
+      Costo: {{ articulo.componentes | costoComposicion: materialesDisponibles }}
+    </p>
+
+    @if (articulo.atributos.length > 0) {
+      <div class="mt-1 flex flex-wrap gap-1.5">
+        @for (asignado of articulo.atributos; track asignado.atributoId) {
+          <p-chip [label]="asignado | etiquetaValorAtributo: atributosDisponibles" styleClass="text-xs" />
+        }
+      </div>
+    }
+
+    <div class="mt-auto flex justify-end gap-1 pt-3">
+      <p-button size="small"
+                icon="pi pi-list"
+                (click)="composicion.emit(articulo)"
+                label="Composición de costos" />  
+      <button
+        type="button"
+        (click)="editar.emit(articulo)"
+        class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+        aria-label="Editar artículo"
+      >
+        <i class="pi pi-pencil text-sm"></i>
+      </button>
+      <button
+        type="button"
+        (click)="eliminar.emit(articulo)"
+        class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+        aria-label="Eliminar artículo"
+      >
+        <i class="pi pi-trash text-sm"></i>
+      </button>
+    </div>
+  </div>
+</div>

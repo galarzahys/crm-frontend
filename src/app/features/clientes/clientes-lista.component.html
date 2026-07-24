@@ -1,0 +1,138 @@
+<div class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Clientes</h2>
+      <p class="mt-1 text-surface-500 dark:text-surface-400">
+        Alta y búsqueda de clientes, según los campos definidos en la ficha.
+      </p>
+    </div>
+    <p-button label="Nuevo cliente" icon="pi pi-plus" (onClick)="abrirAlta()" />
+  </div>
+
+  <p-iconfield class="max-w-md">
+    <p-inputicon styleClass="pi pi-search" />
+    <input
+      type="text"
+      pInputText
+      [(ngModel)]="busqueda"
+      (ngModelChange)="alBuscar()"
+      placeholder="Buscar cliente..."
+      class="w-full"
+    />
+  </p-iconfield>
+
+  @if (camposBuscador().length === 0) {
+    <p class="text-xs text-surface-400">
+      No hay campos marcados como buscador en la ficha de cliente todavía, así que el buscador no tiene sobre qué filtrar.
+      Configuralo en "Ficha de cliente".
+    </p>
+  }
+
+  <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+    <p-table [value]="clientes()" [loading]="cargando()" dataKey="id" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          @if (camposBuscador().length > 0) {
+            @for (campo of camposBuscador(); track campo.id) {
+              <th>{{ campo.nombre }}</th>
+            }
+          } @else {
+            <th>Cliente</th>
+          }
+          <th class="w-28"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-cliente>
+        <tr>
+          @if (camposBuscador().length > 0) {
+            @for (campo of camposBuscador(); track campo.id) {
+              <td class="text-surface-900 dark:text-surface-0">{{ valorDe(cliente, campo.id!) }}</td>
+            }
+          } @else {
+            <td class="font-medium text-surface-900 dark:text-surface-0">{{ cliente.etiqueta }}</td>
+          }
+          <td>
+            <div class="flex justify-end gap-1">
+              <button
+                type="button"
+                (click)="abrirVista(cliente)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                title="Ver ficha completa"
+                aria-label="Ver ficha completa"
+              >
+                <i class="pi pi-eye text-sm"></i>
+              </button>
+              <button
+                type="button"
+                (click)="abrirEdicion(cliente)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                aria-label="Editar cliente"
+              >
+                <i class="pi pi-pencil text-sm"></i>
+              </button>
+              <button
+                type="button"
+                (click)="confirmarEliminacion(cliente)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                aria-label="Eliminar cliente"
+              >
+                <i class="pi pi-trash text-sm"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="camposBuscador().length + 1 || 2" class="py-10 text-center text-surface-400">
+            No se encontraron clientes.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  @if (total() > 0) {
+    <p-paginator [first]="primerRegistro()" [rows]="10" [totalRecords]="total()" (onPageChange)="alCambiarPagina($event)" />
+  }
+</div>
+
+<p-dialog
+  [(visible)]="dialogoAbierto"
+  [modal]="true"
+  [style]="{ width: '70vw' }"
+  [header]="clienteEnEdicion() ? 'Editar cliente' : 'Nuevo cliente'"
+>
+  @if (dialogoAbierto()) {
+    <app-cliente-formulario
+      [clienteEditar]="clienteEnEdicion()"
+      (guardado)="alGuardar()"
+      (cancelado)="dialogoAbierto.set(false)"
+    />
+  }
+</p-dialog>
+
+<!-- Ficha completa, de solo lectura -->
+<p-dialog
+  [(visible)]="dialogoVistaAbierto"
+  [modal]="true"
+  [style]="{ width: '70vw' }"
+  header="Ficha del cliente"
+>
+  @if (clienteEnVista(); as cliente) {
+    <div class="flex flex-col divide-y divide-surface-200 dark:divide-surface-700">
+      @for (campo of todosLosCampos(); track campo.id) {
+        <div class="flex flex-col gap-0.5 py-2.5 first:pt-0 last:pb-0">
+          <span class="text-xs font-medium text-surface-500 dark:text-surface-400">{{ campo.nombre }}</span>
+          <span class="text-sm text-surface-900 dark:text-surface-0">{{ valorDe(cliente, campo.id!) }}</span>
+        </div>
+      }
+      @if (todosLosCampos().length === 0) {
+        <p class="py-4 text-sm text-surface-400">No hay campos definidos en la ficha.</p>
+      }
+    </div>
+    <div class="mt-4 flex justify-end">
+      <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="dialogoVistaAbierto.set(false)" />
+    </div>
+  }
+</p-dialog>

@@ -1,0 +1,80 @@
+<div class="flex flex-col gap-4">
+  @if (error()) {
+    <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+      {{ error() }}
+    </div>
+  }
+
+  @if (cargandoCampos()) {
+    <p class="text-sm text-surface-400">Cargando la ficha...</p>
+  } @else if (campos().length === 0) {
+    <p class="text-sm text-surface-400">
+      Todavía no hay campos definidos para la ficha de cliente. Configurala primero en "Ficha de cliente".
+    </p>
+  } @else {
+    <div class="flex flex-col gap-4">
+      @for (campo of campos(); track campo.id) {
+        <div class="flex flex-col gap-1.5">
+          <label [for]="'campo-' + campo.id!" class="text-sm font-medium text-surface-700 dark:text-surface-300">
+            {{ campo.nombre }}
+            @if (campo.obligatorio) {
+              <span class="text-red-500">*</span>
+            }
+          </label>
+
+          @switch (campo.tipo) {
+            @case ('numero') {
+              <p-inputNumber [id]="'campo-' + campo.id!" [(ngModel)]="valoresPorCampo[campo.id!]" styleClass="w-full" />
+            }
+            @case ('fecha') {
+              <p-datePicker
+                [inputId]="'campo-' + campo.id!"
+                [(ngModel)]="valoresPorCampo[campo.id!]"
+                dateFormat="dd/mm/yy"
+                [showIcon]="true"
+                styleClass="w-full"
+              />
+            }
+            @case ('email') {
+              <input
+                [id]="'campo-' + campo.id!"
+                type="email"
+                pInputText
+                [(ngModel)]="valoresPorCampo[campo.id!]"
+                class="w-full"
+              />
+            }
+            @case ('telefono') {
+              <input
+                [id]="'campo-' + campo.id!"
+                type="tel"
+                pInputText
+                [(ngModel)]="valoresPorCampo[campo.id!]"
+                class="w-full"
+              />
+            }
+            @default {
+              <input
+                [id]="'campo-' + campo.id!"
+                type="text"
+                pInputText
+                [(ngModel)]="valoresPorCampo[campo.id!]"
+                class="w-full"
+              />
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <div class="mt-2 flex justify-end gap-2">
+    <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="cancelar()" />
+    <p-button
+      [label]="esEdicion ? 'Guardar cambios' : 'Crear cliente'"
+      [loading]="guardando()"
+      [disabled]="campos().length === 0"
+      (onClick)="guardar()"
+    />
+  </div>
+</div>

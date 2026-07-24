@@ -1,0 +1,93 @@
+<div class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Atributos</h2>
+      <p class="mt-1 text-surface-500 dark:text-surface-400">
+        Definí las características que después vas a poder asignarle a los artículos.
+      </p>
+    </div>
+    <p-button label="Nuevo atributo" icon="pi pi-plus" (onClick)="abrirAlta()" />
+  </div>
+
+  <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+    <p-table
+      [value]="atributos()"
+      [loading]="cargando()"
+      [paginator]="atributos().length > 10"
+      [rows]="10"
+      dataKey="id"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Unidad</th>
+          <th>Tipo</th>
+          <th>Opciones</th>
+          <th class="w-28"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-atributo>
+        <tr>
+          <td class="font-medium text-surface-900 dark:text-surface-0">{{ atributo.nombre }}</td>
+          <td class="text-surface-500 dark:text-surface-400">{{ atributo.unidadMedida || '—' }}</td>
+          <td>
+            <p-tag
+              [value]="etiquetaTipo(atributo.tipo)"
+              [severity]="atributo.tipo === 'opciones' ? 'info' : 'secondary'"
+            />
+          </td>
+          <td class="text-surface-500 dark:text-surface-400">
+            @if (atributo.opciones.length > 0) {
+              {{ atributo.opciones.length }} opción(es)
+            } @else {
+              —
+            }
+          </td>
+          <td>
+            <div class="flex justify-end gap-1">
+              <button
+                type="button"
+                (click)="abrirEdicion(atributo)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                aria-label="Editar atributo"
+              >
+                <i class="pi pi-pencil text-sm"></i>
+              </button>
+              <button
+                type="button"
+                (click)="confirmarEliminacion(atributo)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                aria-label="Eliminar atributo"
+              >
+                <i class="pi pi-trash text-sm"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="py-10 text-center text-surface-400">
+            Todavía no creaste ningún atributo.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-dialog
+  [(visible)]="dialogoAbierto"
+  [modal]="true"
+  [style]="{ width: '32rem' }"
+  [header]="atributoEnEdicion() ? 'Editar atributo' : 'Nuevo atributo'"
+>
+  @if (dialogoAbierto()) {
+    <app-atributo-formulario
+      [atributoEditar]="atributoEnEdicion()"
+      (guardado)="alGuardar()"
+      (cancelado)="dialogoAbierto.set(false)"
+    />
+  }
+</p-dialog>

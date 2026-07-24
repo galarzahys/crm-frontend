@@ -1,0 +1,43 @@
+/*
+ * El orden de las capas (@layer) debe coincidir con el `cssLayer.order`
+ * configurado en `providePrimeNG` (app.config.ts), para que los estilos
+ * de PrimeNG puedan ser sobrescritos por las utilidades de Tailwind
+ * cuando haga falta, sin pelear por especificidad.
+ */
+@layer tailwind-base, primeng, tailwind-utilities;
+
+@import 'tailwindcss/base.css' layer(tailwind-base);
+@import 'tailwindcss/components.css' layer(tailwind-base);
+@import 'tailwindcss/utilities.css' layer(tailwind-utilities);
+
+@import 'primeicons/primeicons.css';
+
+:root {
+  --app-transition: 0.2s ease-in-out;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  @apply bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-50;
+  transition: background-color var(--app-transition), color var(--app-transition);
+}
+
+/* Scrollbar sutil, consistente entre temas */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-300 dark:bg-surface-700;
+  border-radius: 9999px;
+}

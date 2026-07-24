@@ -1,0 +1,177 @@
+<div class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Artículos</h2>
+      <p class="mt-1 text-surface-500 dark:text-surface-400">Catálogo de artículos disponibles para la venta.</p>
+    </div>
+    <p-button label="Nuevo artículo" icon="pi pi-plus" (onClick)="abrirAlta()" />
+  </div>
+
+  <!-- Barra de filtros -->
+  <div class="flex flex-wrap items-center gap-3">
+    <p-iconfield class="min-w-[16rem] flex-1 sm:flex-none">
+      <p-inputicon styleClass="pi pi-search" />
+      <input
+        type="text"
+        pInputText
+        [(ngModel)]="busqueda"
+        (ngModelChange)="alBuscar()"
+        placeholder="Buscar por nombre o descripción..."
+        class="w-full"
+      />
+    </p-iconfield>
+
+    <p-select
+      [options]="categorias()"
+      optionLabel="nombre"
+      optionValue="id"
+      [(ngModel)]="categoriaFiltro"
+      (ngModelChange)="alCambiarCategoria()"
+      placeholder="Todas las categorías"
+      [showClear]="true"
+      styleClass="min-w-[12rem]"
+    />
+
+    <div class="ml-auto">
+      <p-selectButton [options]="opcionesVista" optionLabel="icono" optionValue="valor" [(ngModel)]="vista">
+        <ng-template let-item pTemplate="item">
+          <i [class]="item.icono"></i>
+        </ng-template>
+      </p-selectButton>
+    </div>
+  </div>
+
+  <!-- Vista de tarjetas -->
+  @if (vista() === 'cards') {
+    @if (!cargando() && articulos().length === 0) {
+      <div class="rounded-xl border border-dashed border-surface-300 bg-white p-10 text-center dark:border-surface-700 dark:bg-surface-900">
+        <i class="pi pi-inbox text-3xl text-surface-400 dark:text-surface-600"></i>
+        <p class="mt-3 text-sm text-surface-500 dark:text-surface-400">No se encontraron artículos con esos filtros.</p>
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        @for (articulo of articulos(); track articulo.id) {
+          <app-articulo-card
+            [articulo]="articulo"
+            [categoria]="categoriaPorId(articulo.categoriaId)"
+            [atributosDisponibles]="atributosDisponibles()"
+            [materialesDisponibles]="materialesDisponibles()"
+            (editar)="abrirEdicion($event)"
+            (eliminar)="confirmarEliminacion($event)"
+            (composicion)="irAComposicion($event)"
+          />
+        }
+      </div>
+    }
+  }
+
+  <!-- Vista de lista -->
+  @if (vista() === 'lista') {
+    <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+      <p-table [value]="articulos()" [loading]="cargando()" dataKey="id" styleClass="p-datatable-sm">
+        <ng-template pTemplate="header">
+          <tr>
+            <th class="w-16"></th>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Atributos</th>
+            <th>Costo</th>
+            <th class="w-36"></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-articulo>
+          <tr>
+            <td>
+              <div class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-surface-100 dark:bg-surface-800">
+                @if (articulo.imagenUrlVisualizacion) {
+                  <img [src]="articulo.imagenUrlVisualizacion" [alt]="articulo.nombre" class="h-full w-full object-cover" />
+                } @else {
+                  <i class="pi pi-image text-surface-300 dark:text-surface-600"></i>
+                }
+              </div>
+            </td>
+            <td>
+              <div class="font-medium text-surface-900 dark:text-surface-0">{{ articulo.nombre }}</div>
+              <div class="line-clamp-1 text-xs text-surface-400">{{ articulo.descripcionComprador }}</div>
+            </td>
+            <td>
+              @if (categoriaPorId(articulo.categoriaId); as categoria) {
+                <p-tag [value]="categoria.nombre" severity="secondary" />
+              }
+            </td>
+            <td>
+              <div class="flex flex-wrap gap-1">
+                @for (asignado of articulo.atributos; track asignado.atributoId) {
+                  <span class="rounded-full bg-surface-100 px-2 py-0.5 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+                    {{ asignado | etiquetaValorAtributo: atributosDisponibles() }}
+                  </span>
+                }
+              </div>
+            </td>
+            <td class="whitespace-nowrap text-surface-700 dark:text-surface-300">
+              {{ articulo.componentes | costoComposicion: materialesDisponibles() }}
+            </td>
+            <td>
+              <div class="flex justify-end gap-1">
+                <button
+                  type="button"
+                  (click)="irAComposicion(articulo)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                  title="Composición de costos"
+                  aria-label="Composición de costos"
+                >
+                  <i class="pi pi-calculator text-sm"></i>
+                </button>
+                <button
+                  type="button"
+                  (click)="abrirEdicion(articulo)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                  aria-label="Editar artículo"
+                >
+                  <i class="pi pi-pencil text-sm"></i>
+                </button>
+                <button
+                  type="button"
+                  (click)="confirmarEliminacion(articulo)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                  aria-label="Eliminar artículo"
+                >
+                  <i class="pi pi-trash text-sm"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="6" class="py-10 text-center text-surface-400">No se encontraron artículos con esos filtros.</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  }
+
+  @if (total() > 0) {
+    <p-paginator
+      [first]="primerRegistro()"
+      [rows]="12"
+      [totalRecords]="total()"
+      (onPageChange)="alCambiarPagina($event)"
+    />
+  }
+</div>
+
+<p-dialog
+  [(visible)]="dialogoAbierto"
+  [modal]="true"
+  [style]="{ width: '40rem' }"
+  [header]="articuloEnEdicion() ? 'Editar artículo' : 'Nuevo artículo'"
+>
+  @if (dialogoAbierto()) {
+    <app-articulo-formulario
+      [articuloEditar]="articuloEnEdicion()"
+      (guardado)="alGuardar()"
+      (cancelado)="dialogoAbierto.set(false)"
+    />
+  }
+</p-dialog>

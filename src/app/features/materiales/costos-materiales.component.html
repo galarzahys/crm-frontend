@@ -1,0 +1,154 @@
+<div class="flex flex-col gap-6">
+  <div>
+    <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Costos de materiales</h2>
+    <p class="mt-1 text-surface-500 dark:text-surface-400">
+      Definí el costo por unidad de medida de cada material, mano de obra o accesorio.
+    </p>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-3">
+    <p-iconfield class="min-w-[16rem] flex-1 sm:flex-none">
+      <p-inputicon styleClass="pi pi-search" />
+      <input type="text" pInputText [(ngModel)]="busqueda" (ngModelChange)="cargar()" placeholder="Buscar material..." class="w-full" />
+    </p-iconfield>
+
+    <p-select
+      [options]="opcionesTipo"
+      optionLabel="etiqueta"
+      optionValue="valor"
+      [(ngModel)]="tipoFiltro"
+      (ngModelChange)="cargar()"
+      placeholder="Todos los tipos"
+      [showClear]="true"
+      styleClass="min-w-[12rem]"
+    />
+  </div>
+
+  <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+    <p-table [value]="materiales()" [loading]="cargando()" dataKey="id" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Material</th>
+          <th>Tipo</th>
+          <th>Unidad</th>
+          <th>Costo vigente</th>
+          <th>Última actualización</th>
+          <th class="w-36"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-material>
+        <tr>
+          <td class="font-medium text-surface-900 dark:text-surface-0">{{ material.nombre }}</td>
+          <td>
+            <p-tag [value]="etiquetaTipo(material.tipo)" severity="secondary" />
+          </td>
+          <td class="text-surface-500 dark:text-surface-400">{{ material.unidadMedida }}</td>
+          <td>
+            @if (material.costoActual; as costo) {
+              <span class="font-medium text-surface-900 dark:text-surface-0">
+                {{ formatearValor(costo.valor, costo.moneda) }} / {{ material.unidadMedida }}
+              </span>
+            } @else {
+              <span class="text-surface-400">Sin definir</span>
+            }
+          </td>
+          <td class="text-surface-500 dark:text-surface-400">
+            @if (material.costoActual; as costo) {
+              {{ costo.actualizadoEn | date: 'dd/MM/yyyy HH:mm' }}
+            } @else {
+              —
+            }
+          </td>
+          <td>
+            <div class="flex justify-end gap-1">
+              <button
+                type="button"
+                (click)="abrirHistorial(material)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                title="Ver historial de costos"
+                aria-label="Ver historial de costos"
+              >
+                <i class="pi pi-history text-sm"></i>
+              </button>
+              <p-button
+                [label]="material.costoActual ? 'Editar costo' : 'Definir costo'"
+                size="small"
+                [text]="true"
+                (onClick)="abrirDialogoCosto(material)"
+              />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" class="py-10 text-center text-surface-400">No se encontraron materiales.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-dialog
+  [(visible)]="dialogoAbierto"
+  [modal]="true"
+  [style]="{ width: '26rem' }"
+  [header]="'Costo · ' + (materialParaCosto()?.nombre ?? '')"
+>
+  <div class="flex flex-col gap-4">
+    @if (error()) {
+      <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+        {{ error() }}
+      </div>
+    }
+
+    <div class="flex flex-col gap-1.5">
+      <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Moneda</label>
+      <p-select [options]="opcionesMoneda" optionLabel="etiqueta" optionValue="valor" [(ngModel)]="monedaForm" styleClass="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <label class="text-sm font-medium text-surface-700 dark:text-surface-300">
+        Valor por {{ materialParaCosto()?.unidadMedida }}
+      </label>
+      <p-inputNumber [(ngModel)]="valorForm" mode="decimal" [minFractionDigits]="2" [maxFractionDigits]="4" [min]="0" styleClass="w-full" />
+    </div>
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogoAbierto.set(false)" />
+      <p-button label="Guardar costo" [loading]="guardando()" (onClick)="guardarCosto()" />
+    </div>
+  </div>
+</p-dialog>
+
+<!-- Historial de costos -->
+<p-dialog
+  [(visible)]="dialogoHistorialAbierto"
+  [modal]="true"
+  [style]="{ width: '32rem' }"
+  [header]="'Historial de costos · ' + (materialParaHistorial()?.nombre ?? '')"
+>
+  <p-table [value]="historial()" [loading]="cargandoHistorial()" styleClass="p-datatable-sm">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Valor</th>
+        <th>Vigente desde</th>
+        <th>Vigente hasta</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-item>
+      <tr>
+        <td class="font-medium text-surface-900 dark:text-surface-0">
+          {{ formatearValor(item.valor, item.moneda) }} / {{ materialParaHistorial()?.unidadMedida }}
+        </td>
+        <td class="text-surface-500 dark:text-surface-400">{{ item.vigenteDesde | date: 'dd/MM/yyyy HH:mm' }}</td>
+        <td class="text-surface-500 dark:text-surface-400">{{ item.vigenteHasta | date: 'dd/MM/yyyy HH:mm' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="3" class="py-8 text-center text-surface-400">Este material todavía no tiene valores anteriores.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-dialog>

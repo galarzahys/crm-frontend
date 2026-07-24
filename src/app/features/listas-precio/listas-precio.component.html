@@ -1,0 +1,263 @@
+@if (vista() === 'listas') {
+  <div class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Listas de precios</h2>
+        <p class="mt-1 text-surface-500 dark:text-surface-400">
+          Creá distintas listas y definí, dentro de cada una, el valor de venta de cada artículo.
+        </p>
+      </div>
+      <p-button label="Nueva lista" icon="pi pi-plus" (onClick)="abrirAltaLista()" />
+    </div>
+
+    <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+      <p-table [value]="listas()" [loading]="cargandoListas()" dataKey="id" styleClass="p-datatable-sm">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th class="w-52"></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-lista>
+          <tr>
+            <td class="font-medium text-surface-900 dark:text-surface-0">{{ lista.nombre }}</td>
+            <td class="text-surface-500 dark:text-surface-400">{{ lista.descripcion || '—' }}</td>
+            <td>
+              <div class="flex justify-end gap-1">
+                <p-button label="Gestionar valores" icon="pi pi-dollar" size="small" [text]="true" (onClick)="abrirDetalle(lista)" />
+                <button
+                  type="button"
+                  (click)="abrirEdicionLista(lista)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                  aria-label="Editar lista"
+                >
+                  <i class="pi pi-pencil text-sm"></i>
+                </button>
+                <button
+                  type="button"
+                  (click)="confirmarEliminacionLista(lista)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                  aria-label="Eliminar lista"
+                >
+                  <i class="pi pi-trash text-sm"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="3" class="py-10 text-center text-surface-400">Todavía no creaste ninguna lista de precios.</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+
+  <p-dialog
+    [(visible)]="dialogoListaAbierto"
+    [modal]="true"
+    [style]="{ width: '28rem' }"
+    [header]="listaEnEdicion() ? 'Editar lista de precios' : 'Nueva lista de precios'"
+  >
+    <div class="flex flex-col gap-4">
+      @if (errorLista()) {
+        <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+          {{ errorLista() }}
+        </div>
+      }
+
+      <div class="flex flex-col gap-1.5">
+        <label for="lista-nombre" class="text-sm font-medium text-surface-700 dark:text-surface-300">Nombre</label>
+        <input id="lista-nombre" type="text" pInputText [(ngModel)]="nombreLista" placeholder="Ej: Lista mayorista" class="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label for="lista-descripcion" class="text-sm font-medium text-surface-700 dark:text-surface-300">
+          Descripción <span class="font-normal text-surface-400">(opcional)</span>
+        </label>
+        <textarea
+          id="lista-descripcion"
+          pTextarea
+          rows="2"
+          [(ngModel)]="descripcionLista"
+          placeholder="Notas sobre esta lista de precios"
+          class="w-full"
+        ></textarea>
+      </div>
+
+      <div class="mt-2 flex justify-end gap-2">
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogoListaAbierto.set(false)" />
+        <p-button [label]="listaEnEdicion() ? 'Guardar cambios' : 'Crear lista'" [loading]="guardandoLista()" (onClick)="guardarLista()" />
+      </div>
+    </div>
+  </p-dialog>
+}
+
+@if (vista() === 'detalle' && listaSeleccionada(); as lista) {
+  <div class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          (click)="volverAListas()"
+          class="flex h-9 w-9 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+          aria-label="Volver a listas de precios"
+        >
+          <i class="pi pi-arrow-left"></i>
+        </button>
+        <div>
+          <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">{{ lista.nombre }}</h2>
+          <p class="mt-1 text-surface-500 dark:text-surface-400">Definí el valor de venta de cada artículo en esta lista.</p>
+        </div>
+      </div>
+    </div>
+
+    <p-iconfield class="max-w-md">
+      <p-inputicon styleClass="pi pi-search" />
+      <input type="text" pInputText [(ngModel)]="busquedaArticulo" placeholder="Buscar artículo..." class="w-full" />
+    </p-iconfield>
+
+    <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+      <p-table [value]="articulosFiltrados()" [loading]="cargandoDetalle()" dataKey="id" styleClass="p-datatable-sm">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Artículo</th>
+            <th>Categoría</th>
+            <th>Costo</th>
+            <th>Valor actual</th>
+            <th>Última modificación</th>
+            <th class="w-32"></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-articulo>
+          <tr>
+            <td>
+              <div class="flex items-center gap-3">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-100 dark:bg-surface-800">
+                  @if (articulo.imagenUrlVisualizacion) {
+                    <img [src]="articulo.imagenUrlVisualizacion" [alt]="articulo.nombre" class="h-full w-full object-cover" />
+                  } @else {
+                    <i class="pi pi-box text-surface-300 dark:text-surface-600"></i>
+                  }
+                </div>
+                <span class="font-medium text-surface-900 dark:text-surface-0">{{ articulo.nombre }}</span>
+              </div>
+            </td>
+            <td>
+              <p-tag [value]="categoriaNombre(articulo.categoriaId)" severity="secondary" />
+            </td>
+            <td class="whitespace-nowrap text-surface-700 dark:text-surface-300">
+              {{ articulo.componentes | costoComposicion: materialesDisponibles() }}
+            </td>
+            <td>
+              @if (precioDe(articulo.id); as precio) {
+                <span class="font-medium text-surface-900 dark:text-surface-0">
+                  {{ formatearValor(precio.valor, precio.moneda) }}
+                </span>
+              } @else {
+                <span class="text-surface-400">Sin definir</span>
+              }
+            </td>
+            <td class="text-surface-500 dark:text-surface-400">
+              @if (precioDe(articulo.id); as precio) {
+                {{ precio.actualizadoEn | date: 'dd/MM/yyyy HH:mm' }}
+              } @else {
+                —
+              }
+            </td>
+            <td>
+              <div class="flex justify-end gap-1">
+                <button
+                  type="button"
+                  (click)="abrirDialogoValor(articulo)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                  [attr.aria-label]="precioDe(articulo.id) ? 'Editar valor' : 'Definir valor'"
+                  [title]="precioDe(articulo.id) ? 'Editar valor' : 'Definir valor'"
+                >
+                  <i class="pi pi-pencil text-sm"></i>
+                </button>
+                <button
+                  type="button"
+                  (click)="abrirHistorial(articulo)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                  title="Ver historial de valores"
+                  aria-label="Ver historial de valores"
+                >
+                  <i class="pi pi-history text-sm"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="6" class="py-10 text-center text-surface-400">No se encontraron artículos.</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+
+  <!-- Definir / editar valor -->
+  <p-dialog
+    [(visible)]="dialogoValorAbierto"
+    [modal]="true"
+    [style]="{ width: '26rem' }"
+    [header]="'Valor de venta · ' + (articuloParaValor()?.nombre ?? '')"
+  >
+    <div class="flex flex-col gap-4">
+      @if (errorValor()) {
+        <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+          {{ errorValor() }}
+        </div>
+      }
+
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Moneda</label>
+        <p-select [options]="opcionesMoneda" optionLabel="etiqueta" optionValue="valor" [(ngModel)]="monedaForm" styleClass="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Valor</label>
+        <p-inputNumber [(ngModel)]="valorForm" mode="decimal" [minFractionDigits]="2" [min]="0" styleClass="w-full" />
+      </div>
+
+      <div class="mt-2 flex justify-end gap-2">
+        <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogoValorAbierto.set(false)" />
+        <p-button label="Guardar valor" [loading]="guardandoValor()" (onClick)="guardarValor()" />
+      </div>
+    </div>
+  </p-dialog>
+
+  <!-- Historial -->
+  <p-dialog
+    [(visible)]="dialogoHistorialAbierto"
+    [modal]="true"
+    [style]="{ width: '32rem' }"
+    [header]="'Historial de valores · ' + (articuloParaHistorial()?.nombre ?? '')"
+  >
+    <p-table [value]="historial()" [loading]="cargandoHistorial()" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Valor</th>
+          <th>Vigente desde</th>
+          <th>Vigente hasta</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td class="font-medium text-surface-900 dark:text-surface-0">{{ formatearValor(item.valor, item.moneda) }}</td>
+          <td class="text-surface-500 dark:text-surface-400">{{ item.vigenteDesde | date: 'dd/MM/yyyy HH:mm' }}</td>
+          <td class="text-surface-500 dark:text-surface-400">{{ item.vigenteHasta | date: 'dd/MM/yyyy HH:mm' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="3" class="py-8 text-center text-surface-400">Este artículo todavía no tiene valores anteriores.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-dialog>
+}

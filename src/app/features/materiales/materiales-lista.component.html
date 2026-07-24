@@ -1,0 +1,107 @@
+<div class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Materiales</h2>
+      <p class="mt-1 text-surface-500 dark:text-surface-400">
+        Cargá los materiales, mano de obra y accesorios que después vas a poder usar en la composición de costos de un artículo.
+      </p>
+    </div>
+    <p-button label="Nuevo material" icon="pi pi-plus" (onClick)="abrirAlta()" />
+  </div>
+
+  <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+    <p-table [value]="materiales()" [loading]="cargando()" [paginator]="materiales().length > 10" [rows]="10" dataKey="id" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Unidad de medida</th>
+          <th class="w-28"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-material>
+        <tr>
+          <td class="font-medium text-surface-900 dark:text-surface-0">{{ material.nombre }}</td>
+          <td>
+            <p-tag [value]="etiquetaTipo(material.tipo)" severity="secondary" />
+          </td>
+          <td class="text-surface-500 dark:text-surface-400">{{ material.unidadMedida }}</td>
+          <td>
+            <div class="flex justify-end gap-1">
+              <button
+                type="button"
+                (click)="abrirEdicion(material)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                aria-label="Editar material"
+              >
+                <i class="pi pi-pencil text-sm"></i>
+              </button>
+              <button
+                type="button"
+                (click)="confirmarEliminacion(material)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                aria-label="Eliminar material"
+              >
+                <i class="pi pi-trash text-sm"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="4" class="py-10 text-center text-surface-400">Todavía no creaste ningún material.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<p-dialog
+  [(visible)]="dialogoAbierto"
+  [modal]="true"
+  [style]="{ width: '28rem' }"
+  [header]="materialEnEdicion() ? 'Editar material' : 'Nuevo material'"
+>
+  <div class="flex flex-col gap-4">
+    @if (error()) {
+      <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+        {{ error() }}
+      </div>
+    }
+
+    <div class="flex flex-col gap-1.5">
+      <label for="material-nombre" class="text-sm font-medium text-surface-700 dark:text-surface-300">Nombre</label>
+      <input
+        id="material-nombre"
+        type="text"
+        pInputText
+        [(ngModel)]="nombre"
+        placeholder="Ej: Electrodos, Mano de obra pintura"
+        class="w-full"
+      />
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Tipo</label>
+      <p-select [options]="opcionesTipo" optionLabel="etiqueta" optionValue="valor" [(ngModel)]="tipo" styleClass="w-full" appendTo="body" />
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <label for="material-unidad" class="text-sm font-medium text-surface-700 dark:text-surface-300">Unidad de medida</label>
+      <input
+        id="material-unidad"
+        type="text"
+        pInputText
+        [(ngModel)]="unidadMedida"
+        placeholder="Ej: kg, m2, hora, unidad"
+        class="w-full"
+      />
+    </div>
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogoAbierto.set(false)" />
+      <p-button [label]="materialEnEdicion() ? 'Guardar cambios' : 'Crear material'" [loading]="guardando()" (onClick)="guardar()" />
+    </div>
+  </div>
+</p-dialog>

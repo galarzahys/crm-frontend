@@ -1,0 +1,336 @@
+<div class="flex flex-col gap-6">
+  <div>
+    <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Nuevo presupuesto</h2>
+    <p class="mt-1 text-surface-500 dark:text-surface-400">
+      Elegí el cliente, el vendedor, el servicio y la lista de precios, y agregá los artículos correspondientes.
+    </p>
+  </div>
+
+  <div class="flex flex-col gap-5 rounded-xl border border-surface-200 bg-white p-5 dark:border-surface-800 dark:bg-surface-900 sm:p-6">
+    @if (error()) {
+      <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
+        {{ error() }}
+      </div>
+    }
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Cliente</label>
+          <button
+            type="button"
+            (click)="abrirNuevoCliente()"
+            class="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+          >
+            <i class="pi pi-plus text-[10px]"></i>
+            Nuevo cliente
+          </button>
+        </div>
+        <p-autoComplete
+          [(ngModel)]="clienteSeleccionado"
+          [suggestions]="sugerenciasClientes()"
+          (completeMethod)="buscarClientes($event)"
+          field="etiqueta"
+          [dropdown]="true"
+          [forceSelection]="true"
+          placeholder="Buscar cliente..."
+          styleClass="w-full"
+          [inputStyle]="{ width: '100%' }"
+        >
+          <ng-template let-cliente pTemplate="item">
+            <div class="flex flex-col py-0.5">
+              <span class="text-sm text-surface-900 dark:text-surface-0">{{ cliente.etiqueta }}</span>
+            </div>
+          </ng-template>
+        </p-autoComplete>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Vendedor</label>
+        <p-select
+          [options]="vendedores()"
+          optionLabel="nombre"
+          optionValue="id"
+          [(ngModel)]="vendedorId"
+          placeholder="Elegí un vendedor"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Servicio</label>
+        <p-select
+          [options]="opcionesServicio"
+          optionLabel="etiqueta"
+          optionValue="valor"
+          [(ngModel)]="servicio"
+          placeholder="Elegí el servicio"
+          styleClass="w-full"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Plazo de validez</label>
+        <p-inputNumber
+          [(ngModel)]="plazoValidezDias"
+          suffix=" días"
+          [min]="1"
+          [showButtons]="true"
+          styleClass="w-full"
+        />
+      </div>
+    </div>
+
+    <!-- Lista de precios general -->
+    <div class="flex flex-col gap-1.5 rounded-lg border border-surface-200 p-4 dark:border-surface-700 sm:max-w-sm">
+      <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Lista de precios del presupuesto</label>
+      <p-select
+        [options]="listasPrecio()"
+        optionLabel="nombre"
+        optionValue="id"
+        [(ngModel)]="listaPrecioGeneralId"
+        (ngModelChange)="alCambiarListaGeneral()"
+        placeholder="Elegí una lista de precios"
+        styleClass="w-full"
+      />
+      <p class="text-xs text-surface-400">
+        Se usa como precio por defecto de los artículos que agregues. Podés cambiarla para un artículo puntual.
+      </p>
+    </div>
+
+    <!-- Artículos del presupuesto -->
+    <div class="flex flex-col gap-3 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+      <label class="text-sm font-medium text-surface-700 dark:text-surface-300">Artículos</label>
+
+      <div class="flex flex-col gap-2 md:flex-row sm:items-end">
+        <div class="flex flex-1 flex-col gap-1.5">
+          <span class="text-xs text-surface-500 dark:text-surface-400">Artículo</span>
+          <p-select
+            [options]="articulosParaAgregar"
+            optionLabel="nombre"
+            optionValue="id"
+            [(ngModel)]="articuloParaAgregarId"
+            placeholder="Elegí un artículo"
+            [filter]="true"
+            filterBy="nombre"
+            styleClass="w-full"
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-xs text-surface-500 dark:text-surface-400">Cantidad</span>
+          <p-inputNumber [(ngModel)]="cantidadParaAgregar" [min]="1" [showButtons]="true" />
+        </div>
+        <div>
+          <p-button label="Agregar" icon="pi pi-plus" severity="secondary" [outlined]="true" (onClick)="agregarItem()" />
+        </div>
+      </div>
+
+      @if (items.length > 0) {
+        <div class="mt-2 overflow-x-auto rounded-lg border border-surface-200 dark:border-surface-700">
+          <table class="w-full min-w-[62rem] table-fixed text-sm">
+            <colgroup>
+              <col class="w-64" />
+              <col class="w-44" />
+              <col class="w-28" />
+              <col class="w-24" />
+              <col class="w-24" />
+              <col class="w-28" />
+              <col class="w-28" />
+              <col class="w-10" />
+            </colgroup>
+            <thead class="bg-surface-50 dark:bg-surface-800/50">
+              <tr class="text-left text-xs font-medium text-surface-500 dark:text-surface-400">
+                <th class="px-3 py-2">Artículo</th>
+                <th class="px-3 py-2">Lista</th>
+                <th class="px-3 py-2">Precio unit.</th>
+                <th class="px-3 py-2">Cantidad</th>
+                <th class="px-3 py-2">Desc. %</th>
+                <th class="px-3 py-2">Desc. $</th>
+                <th class="px-3 py-2 text-right">Subtotal</th>
+                <th class="w-10 px-2"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-surface-200 dark:divide-surface-700">
+              @for (item of items; track item.articuloId; let indice = $index) {
+                <tr>
+                  <td class="px-3 py-2">
+                    <div class="flex min-w-0 items-center gap-2">
+                      <div class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-100 dark:bg-surface-800">
+                        @if (item.articulo.imagenUrlVisualizacion) {
+                          <img [src]="item.articulo.imagenUrlVisualizacion" [alt]="item.articulo.nombre" class="h-full w-full object-cover" />
+                        } @else {
+                          <i class="pi pi-box text-xs text-surface-300 dark:text-surface-600"></i>
+                        }
+                      </div>
+                      <span class="truncate text-surface-900 dark:text-surface-0" [title]="item.articulo.nombre">{{ item.articulo.nombre }}</span>
+                    </div>
+                  </td>
+                  <td class="px-3 py-2">
+                    <div class="flex min-w-0 items-center gap-1">
+                      <p-select
+                        [options]="listasPrecio()"
+                        optionLabel="nombre"
+                        optionValue="id"
+                        [ngModel]="item.listaPrecioId"
+                        appendTo="body"
+                        (ngModelChange)="alCambiarListaItem(item, $event)"
+                        styleClass="w-full min-w-0"
+                      />
+                      @if (!item.usaListaGeneral) {
+                        <button
+                          type="button"
+                          (click)="usarListaGeneralEnItem(item)"
+                          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-surface-400 hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+                          title="Volver a usar la lista general"
+                          aria-label="Volver a usar la lista general"
+                        >
+                          <i class="pi pi-refresh text-xs"></i>
+                        </button>
+                      }
+                    </div>
+                  </td>
+                  <td class="overflow-hidden text-ellipsis whitespace-nowrap px-3 py-2">
+                    @if (item.precioDefinido) {
+                      <span class="text-surface-900 dark:text-surface-0">{{ formatearValor(item.precioUnitario, item.moneda) }}</span>
+                    } @else {
+                      <span class="text-xs text-amber-600 dark:text-amber-400" title="Sin precio en esta lista">Sin precio</span>
+                    }
+                  </td>
+                  <td class="px-3 py-2">
+                    <p-inputNumber
+                      [(ngModel)]="item.cantidad"
+                      (ngModelChange)="alCambiarCantidadItem(item)"
+                      [min]="1"
+                      styleClass="w-full"
+                      inputStyleClass="w-full"
+                    />
+                  </td>
+                  <td class="px-3 py-2">
+                    <p-inputNumber
+                      [(ngModel)]="item.descuentoPorcentaje"
+                      (ngModelChange)="alCambiarDescuentoPorcentajeItem(item)"
+                      suffix="%"
+                      [min]="0"
+                      [max]="100"
+                      styleClass="w-full"
+                      inputStyleClass="w-full"
+                    />
+                  </td>
+                  <td class="px-3 py-2">
+                    <p-inputNumber
+                      [(ngModel)]="item.descuentoValor"
+                      (ngModelChange)="alCambiarDescuentoValorItem(item)"
+                      mode="decimal"
+                      [minFractionDigits]="2"
+                      [min]="0"
+                      styleClass="w-full"
+                      inputStyleClass="w-full"
+                    />
+                  </td>
+                  <td class="overflow-hidden text-ellipsis whitespace-nowrap px-3 py-2 text-right font-medium text-surface-900 dark:text-surface-0">
+                    {{ formatearValor(subtotalItem(item), item.moneda) }}
+                  </td>
+                  <td class="px-2 py-2">
+                    <button
+                      type="button"
+                      (click)="quitarItem(indice)"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                      aria-label="Quitar artículo"
+                    >
+                      <i class="pi pi-trash text-sm"></i>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="py-2 text-sm text-surface-400">Todavía no agregaste ningún artículo.</p>
+      }
+
+      <!-- Descuento general y totales -->
+      @if (items.length > 0) {
+        <div class="mt-2 flex flex-col gap-4 border-t border-surface-200 pt-4 dark:border-surface-700 sm:flex-row sm:items-start sm:justify-between">
+          <div class="flex flex-col gap-2 sm:w-72">
+            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Descuento general</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="w-[100px]">
+                <p-inputNumber
+                  [(ngModel)]="descuentoGeneralPorcentaje"
+                  (ngModelChange)="alCambiarDescuentoGeneralPorcentaje()"
+                  suffix="%"
+                  [min]="0"
+                  [max]="100"
+                  styleClass="w-full"
+                />
+              </div>
+              <span class="text-surface-400">=</span>
+              <div class="w-[100px]">
+                <p-inputNumber
+                  [(ngModel)]="descuentoGeneralValor"
+                  (ngModelChange)="alCambiarDescuentoGeneralValor()"
+                  mode="decimal"
+                  [minFractionDigits]="2"
+                  [min]="0"
+                  styleClass="w-full"
+                />
+              </div>
+              <span class="text-xs text-surface-400">{{ monedaPrincipal }}</span>
+            </div>
+            <p class="text-xs text-surface-400">
+              Se aplica sobre el subtotal ya con los descuentos por artículo, en cada moneda del presupuesto.
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-2 sm:items-end">
+            @for (totalGrupo of totalesPorMoneda; track totalGrupo.moneda) {
+              <div class="flex w-full flex-col gap-0.5 rounded-lg bg-surface-50 px-4 py-3 dark:bg-surface-800/50 sm:w-72">
+                <div class="flex justify-between text-xs text-surface-500 dark:text-surface-400">
+                  <span>Subtotal ({{ totalGrupo.moneda }})</span>
+                  <span>{{ formatearValor(totalGrupo.subtotalBruto, totalGrupo.moneda) }}</span>
+                </div>
+                <div class="flex justify-between text-xs text-surface-500 dark:text-surface-400">
+                  <span>Descuento por artículos</span>
+                  <span>− {{ formatearValor(totalGrupo.descuentoItems, totalGrupo.moneda) }}</span>
+                </div>
+                <div class="flex justify-between text-xs text-surface-500 dark:text-surface-400">
+                  <span>Descuento general</span>
+                  <span>− {{ formatearValor(totalGrupo.descuentoGeneral, totalGrupo.moneda) }}</span>
+                </div>
+                <div class="flex justify-between text-xs font-medium text-surface-600 dark:text-surface-300">
+                  <span>Descuento total</span>
+                  <span>− {{ formatearValor(totalGrupo.descuentoItems + totalGrupo.descuentoGeneral, totalGrupo.moneda) }}</span>
+                </div>
+                <div class="mt-1 flex justify-between border-t border-surface-200 pt-1 text-sm font-semibold text-surface-900 dark:border-surface-700 dark:text-surface-0">
+                  <span>Total</span>
+                  <span>{{ formatearValor(totalGrupo.total, totalGrupo.moneda) }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="mt-2 flex justify-end gap-2">
+      <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="cancelar()" />
+      <p-button label="Crear presupuesto" [loading]="guardando()" (onClick)="guardar()" />
+    </div>
+  </div>
+</div>
+
+<!-- Alta rápida de cliente, sin salir del formulario de presupuesto -->
+<p-dialog
+  [(visible)]="dialogoNuevoClienteAbierto"
+  [modal]="true"
+  [style]="{ width: '30rem' }"
+  header="Nuevo cliente"
+>
+  @if (dialogoNuevoClienteAbierto()) {
+    <app-cliente-formulario
+      (guardado)="alCrearClienteInline($event)"
+      (cancelado)="dialogoNuevoClienteAbierto.set(false)"
+    />
+  }
+</p-dialog>
