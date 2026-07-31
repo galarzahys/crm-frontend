@@ -329,7 +329,7 @@ export class PresupuestoFormularioComponent implements OnInit {
         vendedorId: this.vendedorId,
         servicio: this.servicio,
         plazoValidezDias: this.plazoValidezDias,
-        fechaEmision: new Date(),
+        //fechaEmision: new Date(),
         listaPrecioId: this.listaPrecioGeneralId,
         descuentoGeneralPorcentaje: this.descuentoGeneralPorcentaje,
         descuentoGeneralValor: this.descuentoGeneralValor,

@@ -38,7 +38,7 @@ export class PresupuestoService {
     return this.http.get<Presupuesto>(`${this.baseUrl}/${id}`);
   }
 
-  crear(datos: CrearEntidad<Presupuesto>): Observable<Presupuesto> {
+  crear(datos: Omit<CrearEntidad<Presupuesto>, 'fechaEmision'>): Observable<Presupuesto> {
     return this.http.post<Presupuesto>(this.baseUrl, datos);
   }
 
