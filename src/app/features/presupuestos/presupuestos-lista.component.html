@@ -1,0 +1,143 @@
+<div class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-semibold text-surface-900 dark:text-surface-0">Presupuestos</h2>
+      <p class="mt-1 text-surface-500 dark:text-surface-400">Presupuestos creados, con su estado de vigencia y total.</p>
+    </div>
+    <p-button label="Nuevo presupuesto" icon="pi pi-plus" (onClick)="irANuevo()" />
+  </div>
+
+  <div class="overflow-hidden rounded-xl border border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
+    <p-table [value]="presupuestos()" [loading]="cargando()" dataKey="id" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Fecha</th>
+          <th>Cliente</th>
+          <th>Vendedor</th>
+          <th>Servicio</th>
+          <th>Vencimiento</th>
+          <th>Total</th>
+          <th class="w-32"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-presupuesto>
+        <tr>
+          <td class="whitespace-nowrap text-surface-500 dark:text-surface-400">
+            {{ presupuesto.fechaEmision | date: 'dd/MM/yyyy' }}
+          </td>
+          <td class="font-medium text-surface-900 dark:text-surface-0">{{ clienteDe(presupuesto) }}</td>
+          <td class="text-surface-700 dark:text-surface-300">{{ vendedorDe(presupuesto) }}</td>
+          <td>
+            <p-tag [value]="etiquetaServicio(presupuesto)" severity="secondary" />
+          </td>
+          <td class="whitespace-nowrap">
+            <span [class.text-red-600]="estaVencido(presupuesto)" [class.dark:text-red-400]="estaVencido(presupuesto)">
+              {{ fechaVencimiento(presupuesto) | date: 'dd/MM/yyyy' }}
+            </span>
+            @if (estaVencido(presupuesto)) {
+              <p-tag value="Vencido" severity="danger" styleClass="ml-1" />
+            }
+          </td>
+          <td class="whitespace-nowrap">
+            @for (totalGrupo of totalesDe(presupuesto); track totalGrupo.moneda) {
+              <div class="font-medium text-surface-900 dark:text-surface-0">
+                {{ formatearValor(totalGrupo.total, totalGrupo.moneda) }}
+              </div>
+            }
+          </td>
+          <td>
+            <div class="flex justify-end gap-1">
+              <button
+                type="button"
+                (click)="abrirVista(presupuesto)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                title="Ver detalle"
+                aria-label="Ver detalle"
+              >
+                <i class="pi pi-eye text-sm"></i>
+              </button>
+              <button
+                type="button"
+                (click)="irAEditar(presupuesto)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-0"
+                aria-label="Editar presupuesto"
+              >
+                <i class="pi pi-pencil text-sm"></i>
+              </button>
+              <button
+                type="button"
+                (click)="confirmarEliminacion(presupuesto)"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                aria-label="Eliminar presupuesto"
+              >
+                <i class="pi pi-trash text-sm"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7" class="py-10 text-center text-surface-400">Todavía no creaste ningún presupuesto.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  @if (total() > 0) {
+    <p-paginator [first]="primerRegistro()" [rows]="10" [totalRecords]="total()" (onPageChange)="alCambiarPagina($event)" />
+  }
+</div>
+
+<!-- Detalle de solo lectura -->
+<p-dialog [(visible)]="dialogoVistaAbierto" [modal]="true" [style]="{ width: '34rem' }" header="Detalle del presupuesto">
+  @if (presupuestoEnVista(); as presupuesto) {
+    <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <span class="text-xs text-surface-400">Cliente</span>
+          <p class="text-surface-900 dark:text-surface-0">{{ clienteDe(presupuesto) }}</p>
+        </div>
+        <div>
+          <span class="text-xs text-surface-400">Vendedor</span>
+          <p class="text-surface-900 dark:text-surface-0">{{ vendedorDe(presupuesto) }}</p>
+        </div>
+        <div>
+          <span class="text-xs text-surface-400">Servicio</span>
+          <p class="text-surface-900 dark:text-surface-0">{{ etiquetaServicio(presupuesto) }}</p>
+        </div>
+        <div>
+          <span class="text-xs text-surface-400">Vencimiento</span>
+          <p class="text-surface-900 dark:text-surface-0">{{ fechaVencimiento(presupuesto) | date: 'dd/MM/yyyy' }}</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col divide-y divide-surface-200 dark:divide-surface-700">
+        @for (item of presupuesto.items; track item.articuloId) {
+          <div class="flex items-center justify-between gap-3 py-2 text-sm">
+            <span class="text-surface-700 dark:text-surface-300">
+              {{ articuloDe(item.articuloId)?.nombre ?? ('Artículo #' + item.articuloId) }}
+              <span class="text-surface-400">x{{ item.cantidad }}</span>
+            </span>
+            <span class="font-medium text-surface-900 dark:text-surface-0">
+              {{ formatearValor(item.precioUnitario * item.cantidad - item.descuentoValor, item.moneda) }}
+            </span>
+          </div>
+        }
+      </div>
+
+      <div class="flex flex-col items-end gap-1 border-t border-surface-200 pt-3 dark:border-surface-700">
+        @for (totalGrupo of totalesDe(presupuesto); track totalGrupo.moneda) {
+          <div class="flex w-full max-w-xs justify-between text-sm font-semibold text-surface-900 dark:text-surface-0">
+            <span>Total ({{ totalGrupo.moneda }})</span>
+            <span>{{ formatearValor(totalGrupo.total, totalGrupo.moneda) }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="flex justify-end">
+        <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="dialogoVistaAbierto.set(false)" />
+      </div>
+    </div>
+  }
+</p-dialog>

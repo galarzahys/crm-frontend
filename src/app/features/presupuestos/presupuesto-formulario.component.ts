@@ -1,18 +1,19 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AutoCompleteCompleteEvent, AutoCompleteModule } from 'primeng/autocomplete';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
-import { Observable, of } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Articulo } from '../../shared/models/articulo.model';
 import { Cliente } from '../../shared/models/cliente.model';
 import { ListaPrecio } from '../../shared/models/lista-precio.model';
 import { Moneda, PrecioArticulo } from '../../shared/models/precio-articulo.model';
-import { OPCIONES_TIPO_SERVICIO, PresupuestoItem, TipoServicio } from '../../shared/models/presupuesto.model';
+import { OPCIONES_TIPO_SERVICIO, Presupuesto, PresupuestoItem, TipoServicio } from '../../shared/models/presupuesto.model';
 import { Vendedor } from '../../shared/models/vendedor.model';
 import { ArticuloService } from '../../shared/services/articulo.service';
 import { ClienteService } from '../../shared/services/cliente.service';
@@ -62,6 +63,8 @@ const PLAZO_VALIDEZ_POR_DEFECTO_DIAS = 15;
   templateUrl: './presupuesto-formulario.component.html',
 })
 export class PresupuestoFormularioComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly clienteService = inject(ClienteService);
   private readonly vendedorService = inject(VendedorService);
   private readonly articuloService = inject(ArticuloService);
@@ -72,11 +75,14 @@ export class PresupuestoFormularioComponent implements OnInit {
 
   protected readonly opcionesServicio = OPCIONES_TIPO_SERVICIO;
 
+  /** Id del presupuesto en edición; null = estamos dando de alta uno nuevo. */
+  protected presupuestoId: number | null = null;
+
   protected readonly vendedores = signal<Vendedor[]>([]);
   protected readonly listasPrecio = signal<ListaPrecio[]>([]);
   protected readonly articulosDisponibles = signal<Articulo[]>([]);
   protected readonly sugerenciasClientes = signal<Cliente[]>([]);
-  protected readonly dialogoNuevoClienteAbierto = signal(false);
+  protected readonly cargando = signal(false);
   protected readonly guardando = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -97,6 +103,8 @@ export class PresupuestoFormularioComponent implements OnInit {
   protected descuentoGeneralValor = 0;
   private origenDescuentoGeneral: OrigenDescuento = 'porcentaje';
 
+  protected readonly dialogoNuevoClienteAbierto = signal(false);
+
   /** Cache local de precios ya consultados por lista, para no repetir pedidos. */
   private readonly preciosPorLista = new Map<number, PrecioArticulo[]>();
 
@@ -105,12 +113,71 @@ export class PresupuestoFormularioComponent implements OnInit {
     USD: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD' }),
   };
 
+  protected get esEdicion(): boolean {
+    return this.presupuestoId !== null;
+  }
+
   ngOnInit(): void {
     this.vendedorService.listarTodos().subscribe((vendedores) => this.vendedores.set(vendedores));
     this.listaPrecioService.listarTodas().subscribe((listas) => this.listasPrecio.set(listas));
     this.articuloService
       .listar({ tamanio: 1000, ordenarPor: 'nombre' })
       .subscribe((resultado) => this.articulosDisponibles.set(resultado.datos));
+
+    const idParam = this.route.snapshot.paramMap.get('id');
+    if (idParam) {
+      this.presupuestoId = Number(idParam);
+      this.cargarParaEdicion(this.presupuestoId);
+    }
+  }
+
+  private cargarParaEdicion(id: number): void {
+    this.cargando.set(true);
+    this.presupuestoService.obtenerPorId(id).subscribe({
+      next: (presupuesto) => {
+        this.vendedorId = presupuesto.vendedorId;
+        this.servicio = presupuesto.servicio;
+        this.plazoValidezDias = presupuesto.plazoValidezDias;
+        this.listaPrecioGeneralId = presupuesto.listaPrecioId;
+        this.descuentoGeneralPorcentaje = presupuesto.descuentoGeneralPorcentaje;
+        this.descuentoGeneralValor = presupuesto.descuentoGeneralValor;
+        this.origenDescuentoGeneral = 'valor';
+
+        this.clienteService.obtenerPorId(presupuesto.clienteId).subscribe((cliente) => (this.clienteSeleccionado = cliente));
+
+        if (presupuesto.items.length === 0) {
+          this.cargando.set(false);
+          return;
+        }
+
+        forkJoin(presupuesto.items.map((item) => this.articuloService.obtenerPorId(item.articuloId))).subscribe({
+          next: (articulos) => {
+            this.items = presupuesto.items.map((item, indice) => ({
+              articuloId: item.articuloId,
+              articulo: articulos[indice],
+              listaPrecioId: item.listaPrecioId,
+              usaListaGeneral: item.listaPrecioId === presupuesto.listaPrecioId,
+              precioUnitario: item.precioUnitario,
+              moneda: item.moneda,
+              precioDefinido: true,
+              cantidad: item.cantidad,
+              descuentoPorcentaje: item.descuentoPorcentaje,
+              descuentoValor: item.descuentoValor,
+              origenDescuento: 'valor' as OrigenDescuento,
+            }));
+            this.cargando.set(false);
+          },
+          error: () => {
+            this.cargando.set(false);
+            this.error.set('No se pudieron cargar los artículos de este presupuesto.');
+          },
+        });
+      },
+      error: () => {
+        this.cargando.set(false);
+        this.error.set('No se pudo cargar el presupuesto.');
+      },
+    });
   }
 
   /** Artículos para el selector de "agregar": excluye los que ya están en el presupuesto. */
@@ -132,12 +199,6 @@ export class PresupuestoFormularioComponent implements OnInit {
   protected get totalesPorMoneda(): TotalPorMoneda[] {
     const monedaPrincipal = this.monedaPrincipal;
     return this.agruparPorMoneda().map((grupo) => {
-      // Para la moneda principal usamos el monto exacto que cargó (o que se derivó
-      // en el momento) en vez de recalcularlo desde el %: redondear el % a 2
-      // decimales y volver a multiplicarlo contra una base grande (montos de
-      // millones) amplifica el error de redondeo. Para el resto de las monedas
-      // (si el presupuesto mezcla ARS y USD) no hay un monto propio cargado, así
-      // que ahí sí corresponde aplicar el mismo % general sobre esa base.
       const descuentoGeneral =
         grupo.moneda === monedaPrincipal
           ? this.clamp(this.descuentoGeneralValor, 0, grupo.subtotalConDescuentosItems)
@@ -323,37 +384,40 @@ export class PresupuestoFormularioComponent implements OnInit {
       descuentoValor: item.descuentoValor,
     }));
 
-    this.presupuestoService
-      .crear({
-        clienteId: this.clienteSeleccionado.id!,
-        vendedorId: this.vendedorId,
-        servicio: this.servicio,
-        plazoValidezDias: this.plazoValidezDias,
-        //fechaEmision: new Date(),
-        listaPrecioId: this.listaPrecioGeneralId,
-        descuentoGeneralPorcentaje: this.descuentoGeneralPorcentaje,
-        descuentoGeneralValor: this.descuentoGeneralValor,
-        items,
-      })
-      .subscribe({
-        next: () => {
-          this.guardando.set(false);
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Presupuesto creado',
-            detail: 'El presupuesto se guardó correctamente.',
-          });
-          this.reiniciar();
-        },
-        error: () => {
-          this.guardando.set(false);
-          this.error.set('No se pudo guardar el presupuesto. Probá de nuevo.');
-        },
-      });
+    const datosBase = {
+      clienteId: this.clienteSeleccionado.id!,
+      vendedorId: this.vendedorId,
+      servicio: this.servicio,
+      plazoValidezDias: this.plazoValidezDias,
+      listaPrecioId: this.listaPrecioGeneralId,
+      descuentoGeneralPorcentaje: this.descuentoGeneralPorcentaje,
+      descuentoGeneralValor: this.descuentoGeneralValor,
+      items,
+    };
+
+    const operacion$ = this.esEdicion
+      ? this.presupuestoService.actualizar({ id: this.presupuestoId!, ...datosBase })
+      : this.presupuestoService.crear(datosBase);
+
+    operacion$.subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.messageService.add({
+          severity: 'success',
+          summary: this.esEdicion ? 'Presupuesto actualizado' : 'Presupuesto creado',
+          detail: 'Los cambios se guardaron correctamente.',
+        });
+        this.router.navigate(['/presupuestos']);
+      },
+      error: () => {
+        this.guardando.set(false);
+        this.error.set('No se pudo guardar el presupuesto. Probá de nuevo.');
+      },
+    });
   }
 
   protected cancelar(): void {
-    this.reiniciar();
+    this.router.navigate(['/presupuestos']);
   }
 
   // ---------- Privado: precios y descuentos ----------
@@ -380,7 +444,6 @@ export class PresupuestoFormularioComponent implements OnInit {
     });
   }
 
-  /** Recalcula, para un ítem, el campo (% o monto) que no fue el último editado por el usuario. */
   private recalcularDescuentoItem(item: ItemFormulario): void {
     const base = item.precioUnitario * item.cantidad;
     const resultado = this.recalcularParDescuento(base, item.descuentoPorcentaje, item.descuentoValor, item.origenDescuento);
@@ -388,7 +451,6 @@ export class PresupuestoFormularioComponent implements OnInit {
     item.descuentoValor = resultado.valor;
   }
 
-  /** Recalcula el descuento general (aplicado sobre el subtotal ya neto de descuentos por ítem, en la moneda principal). */
   private recalcularDescuentoGeneral(): void {
     const grupo = this.agruparPorMoneda().find((g) => g.moneda === this.monedaPrincipal);
     const base = grupo?.subtotalConDescuentosItems ?? 0;
@@ -397,12 +459,11 @@ export class PresupuestoFormularioComponent implements OnInit {
     this.descuentoGeneralValor = resultado.valor;
   }
 
-  /** Núcleo de la reactividad %/monto: a partir de una base y de cuál de los dos campos editó el usuario, deriva el otro. */
   private recalcularParDescuento(
     base: number,
     porcentajeActual: number,
     valorActual: number,
-    origen: OrigenDescuento
+    origen: OrigenDescuento,
   ): { porcentaje: number; valor: number } {
     if (base <= 0) {
       return { porcentaje: 0, valor: 0 };
@@ -439,29 +500,11 @@ export class PresupuestoFormularioComponent implements OnInit {
     return Math.round((valor + Number.EPSILON) * 100) / 100;
   }
 
-  /** Redondeo con más precisión que `redondear`, para porcentajes: 2 decimales sobre un % ya
-   * amplifica bastante el error cuando se multiplica de nuevo contra una base grande. */
   private redondearPorcentaje(valor: number): number {
     return Math.round((valor + Number.EPSILON) * 10000) / 10000;
   }
 
   private clamp(valor: number, minimo: number, maximo: number): number {
     return Math.min(Math.max(valor, minimo), maximo);
-  }
-
-  private reiniciar(): void {
-    this.clienteSeleccionado = null;
-    this.vendedorId = null;
-    this.servicio = null;
-    this.plazoValidezDias = PLAZO_VALIDEZ_POR_DEFECTO_DIAS;
-    this.listaPrecioGeneralId = null;
-    this.articuloParaAgregarId = null;
-    this.cantidadParaAgregar = 1;
-    this.items = [];
-    this.descuentoGeneralPorcentaje = 0;
-    this.descuentoGeneralValor = 0;
-    this.origenDescuentoGeneral = 'porcentaje';
-    this.preciosPorLista.clear();
-    this.error.set(null);
   }
 }

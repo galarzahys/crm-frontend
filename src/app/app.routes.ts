@@ -25,12 +25,6 @@ export const routes: Routes = [
         title: 'Atributos · Gestión App',
       },
       {
-        path: 'presupuestos',
-        loadComponent: () =>
-          import('./features/presupuestos/presupuesto-formulario.component').then((m) => m.PresupuestoFormularioComponent),
-        title: 'Atributos · Gestión App',
-      },
-      {
         path: 'precios',
         loadComponent: () =>
           import('./features/listas-precio/listas-precio.component').then((m) => m.ListasPrecioComponent),
@@ -65,6 +59,18 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/materiales/costos-materiales.component').then((m) => m.CostosMaterialesComponent),
         title: 'Atributos · Gestión App',
+      },
+      {
+        path: 'presupuestos',
+        loadComponent: () => import('./features/presupuestos/presupuestos-lista.component').then(m => m.PresupuestosListaComponent),
+      },
+      {
+        path: 'presupuestos/nuevo',
+        loadComponent: () => import('./features/presupuestos/presupuesto-formulario.component').then(m => m.PresupuestoFormularioComponent),
+      },
+      {
+        path: 'presupuestos/:id/editar',
+        loadComponent: () => import('./features/presupuestos/presupuesto-formulario.component').then(m => m.PresupuestoFormularioComponent),
       },
       // Los nuevos módulos se agregan acá como rutas lazy-loaded adicionales.
       { path: '**', redirectTo: 'inicio' },

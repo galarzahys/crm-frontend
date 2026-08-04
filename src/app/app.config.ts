@@ -12,6 +12,7 @@ import { AlmacenamientoImagenesCacheService } from './core/data/almacenamiento-i
 import { ALMACENAMIENTO_IMAGENES } from './core/data/almacenamiento-imagenes.token';
 import { PRIMENG_TRANSLATION_ES_AR } from './core/i18n/primeng-es-ar.translation';
 import { PresetGestionApp } from './core/theme/preset-gestion-app';
+import { AlmacenamientoImagenesS3Service } from './core/data/almacenamiento-imagenes-s3.service';
 
 registerLocaleData(localeEsAr, 'es-AR');
 
@@ -47,6 +48,6 @@ export const appConfig: ApplicationConfig = {
     // Proveedor de almacenamiento de imágenes de artículos. Hoy en memoria;
     // el día que haya backend con S3, se reemplaza este `useClass` por la
     // implementación real (ver core/data/almacenamiento-imagenes.interface.ts).
-    { provide: ALMACENAMIENTO_IMAGENES, useClass: AlmacenamientoImagenesCacheService },
+    { provide: ALMACENAMIENTO_IMAGENES, useClass: AlmacenamientoImagenesS3Service },
   ],
 };
